@@ -21,7 +21,7 @@ class TabModel(Schema):
 
 class TabPatch(Schema):
     tabId=fields.Str(required=True)
-    item=fields.Nested(ItemModel())
+    item=fields.Nested(ItemModel(many=True))
     
 class TabPost(Schema):
     storeId=fields.Str(required=True)
