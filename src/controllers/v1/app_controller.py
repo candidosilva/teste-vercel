@@ -36,7 +36,7 @@ class UpdateTab(MethodView):
     def patch(self, tab_data):
         try:
             filter = {"_id": ObjectId(tab_data["tabId"])}
-            update = {"$set": {"items": tab_data["item"]}, "$set": {"status": "DELIVERED"}}
+            update = {"$set": {"items": tab_data["item"], "status": "DELIVERED"}}
             dbResponse = MongoDBConnection.dataBase()[globalvars.CONST_TABS_COLLECTION].update_one(filter, update)
             
             if dbResponse.modified_count == 0:
