@@ -31,11 +31,13 @@ class POS(MethodView):
         except KeyError:
             abort(500, message="Error getting the store.")
             
-@blp.route("/pos/pagamentoPendente/<string:ibm>/<string:numero_serie>")
+@blp.route("/pagamentoPendente")
 class TabPending(MethodView):
     @blp.response(200)
-    def patch(self, ibm, numero_serie):
-        try:   
+    def get(self):
+        try:
+            ibm = request.args.get('ibm')
+            numero_serie = request.args.get('numero_serie')
             authorization = request.headers.get('Authorization')
             hash = hashlib.md5(f"TOTEM LBC IBM:{ibm} SERIAL:{numero_serie }".encode()).hexdigest()
             print(hash)
@@ -76,7 +78,7 @@ class TabPending(MethodView):
         except KeyError:
             abort(500, message="Error getting the store.")
             
-@blp.route("/pos/atualizarPagamento")
+@blp.route("/atualizarPagamento")
 class AtualizarPagamento(MethodView):
     @blp.arguments(AtualizarPagamentoModel)
     @blp.response(200, AtualizarPagamentoModel)
