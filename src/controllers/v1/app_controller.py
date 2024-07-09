@@ -32,7 +32,7 @@ class TabList(MethodView):
 @blp.route("/tab/app")
 class UpdateTab(MethodView):
     @blp.arguments(TabPatch)
-    @blp.response(200, ItemModel)
+    @blp.response(200, ItemModel(many=True))
     def patch(self, tab_data):
         try:
             filter = {"_id": ObjectId(tab_data["tabId"])}
