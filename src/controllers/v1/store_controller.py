@@ -4,7 +4,6 @@ from bson.objectid import ObjectId
 from src.services.__init__ import MongoDBConnection
 import src.globalvars as globalvars
 from datetime import datetime
-from pprint import pprint
 
 from src.models.store_model import StoreModel
 
@@ -19,7 +18,6 @@ class Store(MethodView):
             new_store = {**store_data}
             new_store["ibm"] = new_store["ibm"].zfill(14)
             new_store["createdAt"] = datetime.now()
-            pprint(new_store)
             dbResponse = MongoDBConnection.dataBase()[globalvars.CONST_STORES_COLLECTION].insert_one(new_store)
             store_response = {**new_store, "id": dbResponse.inserted_id, "totems": []}
             return store_response

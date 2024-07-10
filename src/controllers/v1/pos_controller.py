@@ -5,12 +5,17 @@ from bson.objectid import ObjectId
 from src.services.__init__ import MongoDBConnection
 import src.globalvars as globalvars
 from flask_jwt_extended import jwt_required
-from flask import request
+from flask import request, jsonify
 import hashlib
 
 from src.models.pos_model import POSModel, AtualizarPagamentoModel
 
 blp = Blueprint("POS", __name__, description="Registro do POS na loja")
+
+def gereMD5(texto):
+    md5 = hashlib.md5()
+    md5.update(texto.encode('utf-8'))
+    return md5.hexdigest() 
 
 @blp.route("/pos")
 class POS(MethodView):
@@ -36,16 +41,21 @@ class TabPending(MethodView):
     @blp.response(200)
     def get(self):
         try:
-            ibm = request.args.get('ibm')
+            ibm = request.args.get('ibm').zfill(14)
             numero_serie = request.args.get('numero_serie')
-            authorization = request.headers.get('Authorization')
-            hash = hashlib.md5(f"TOTEM LBC IBM:{ibm} SERIAL:{numero_serie }".encode()).hexdigest()
-            print(hash)
-            print(authorization)
-            if authorization == hash:
+            auth_header = request.headers.get('Authorization')
+            hash = gereMD5('TOTEM LBC IBM:' + ibm + ' SERIAL:' + numero_serie)
+            
+            if auth_header:
+                token_type, token = auth_header.split()
+                if token_type.lower() != 'bearer':
+                    return jsonify({"error": "Invalid token type"}), 400
+            else:
+                return jsonify({"error": "Authorization header is missing"}), 401
+        
+            if token == hash:
                 filter = {"ibm": ibm, "totems": {"$elemMatch": {"pos": numero_serie}}}
                 store = MongoDBConnection.dataBase()[globalvars.CONST_STORES_COLLECTION].find_one(filter)
-                
                 totemId = None
                 if store:
                     for totem in store["totems"]:
@@ -54,6 +64,7 @@ class TabPending(MethodView):
                             break
                 else:
                     abort(401, message="Store not found")
+                    
                 filter = {"ibm": ibm, "totemId": totemId, "status": "AWAITING"}
                 tab = MongoDBConnection.dataBase()[globalvars.CONST_TABS_COLLECTION].find_one(filter)
                 
@@ -85,11 +96,18 @@ class AtualizarPagamento(MethodView):
     def patch(self, data):
         try:
             authorization = request.headers.get('Authorization')
-            hash = hashlib.md5(f"TOTEM LBC IBM:{data["ibm"]} SERIAL:{data["numero_serie"]}".encode()).hexdigest()
-            if authorization == hash:
+            hash = gereMD5('TOTEM LBC IBM:' + data["ibm"] + ' SERIAL:' + data["numero_serie"])
+            
+            if authorization:
+                token_type, token = authorization.split()
+                if token_type.lower() != 'bearer':
+                    return jsonify({"error": "Invalid token type"}), 400
+            else:
+                return jsonify({"error": "Authorization header is missing"}), 401
+            
+            if token == hash:
                 filter = {"ibm": data["ibm"], "totems": {"$elemMatch": {"pos": data['numero_serie']}}}
                 store = MongoDBConnection.dataBase()[globalvars.CONST_STORES_COLLECTION].find_one(filter)
-                
                 totemId = None
                 if store:
                     for totem in store["totems"]:
@@ -102,7 +120,6 @@ class AtualizarPagamento(MethodView):
                 filter = {"ibm": data["ibm"], "totemId": totemId, "status": "AWAITING" }
                 update = {"$set": {"status": "COMPLETED"}}
                 tab = MongoDBConnection.dataBase()[globalvars.CONST_TABS_COLLECTION].update_one(filter, update)
-                
                 if tab.modified_count == 0:
                     abort(409, message="Tab not updated.")
             
